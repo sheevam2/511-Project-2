@@ -1,27 +1,20 @@
-# Part 2: Benchmarking HNSW with Increasing Dataset Sizes
+# Part 2: HNSW Scalability Analysis
 
-## Description:
-This part evaluates the scalability of HNSW as the dataset size increases by analyzing QPS, Recall, and Index Build Time across datasets of varying sizes.
+## Files
+- `part2_hnsw_scaling.py` - Main benchmarking script
+- `part2_results.json` - Results data
+- `graph2.py` - Enhanced plotting script
+- `part2_enhanced_qps_vs_recall.png` - QPS vs Recall plot
+- `part2_enhanced_buildtime_vs_recall.png` - Build Time vs Recall plot
+- `part2_dataset_size_analysis.png` - Dataset size analysis
 
-## Requirements:
-- Download 4 different datasets from ann-benchmarks
-- Vary M parameter across [4, 8, 12, 24, 48]
-- Tune efSearch and efConstruction parameters for each dataset
-- Generate QPS vs Recall and Index Build Time vs Recall plots
+## Usage
+1. Run the benchmark: `python part2_hnsw_scaling.py`
+2. Generate enhanced plots: `python graph2.py`
 
-## Datasets to Use:
-Choose 4 datasets with increasing sizes from:
-- MNIST (60K vectors, 784 dim)
-- NYTimes (290K vectors, 256 dim)
-- GloVe-25 (1.18M vectors, 25 dim)
-- GloVe-50 (1.18M vectors, 50 dim)
-- GloVe-100 (1.18M vectors, 100 dim)
-- SIFT (1M vectors, 128 dim)
-
-## Deliverables:
-- QPS vs Recall plot (different curves for different dataset sizes)
-- Index Build Time vs Recall plot (different curves for different dataset sizes)
-- Analysis of parameter impacts and dataset properties
-
-## Status:
-🚧 **Not implemented yet** - Ready for development
+## Enhanced Plot Features
+- Multiple datasets with distinct colors
+- M parameter annotations
+- Log scales for better visualization
+- Dataset size analysis plots
+- Professional styling and formatting
