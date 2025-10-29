@@ -8,6 +8,12 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Generated plot files (exclude from git but keep locally)
+*.png
+*.html
+*.json
+*.pkl
+
 # IDE files
 .vscode/
 .idea/
@@ -17,3 +23,5 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Note: Part folders (part0/, part1/, part2/, part3/) are tracked in git
