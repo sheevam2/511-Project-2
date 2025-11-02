@@ -12,7 +12,11 @@ def evaluate_hnsw():
     
     # Load the SIFT1M dataset
     print("Loading SIFT1M dataset...")
-    with h5py.File('sift-128-euclidean.hdf5', 'r') as f:
+    # Dataset is in repo root, but script may run from part0/ directory
+    dataset_path = 'sift-128-euclidean.hdf5'
+    if not os.path.exists(dataset_path):
+        dataset_path = os.path.join('..', 'sift-128-euclidean.hdf5')
+    with h5py.File(dataset_path, 'r') as f:
         train_embeddings = f['train'][:]  # Database vectors
         test_embeddings = f['test'][:]    # Query vectors
     

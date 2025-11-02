@@ -25,6 +25,44 @@ jobs:
         python -m pip install --upgrade pip
         pip install faiss-cpu numpy h5py pytest requests
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Test with pytest
+    - name: Cache SIFT1M dataset
+      uses: actions/cache@v4
+      with:
+        path: sift-128-euclidean.hdf5
+        key: sift1m-dataset-v1
+        restore-keys: sift1m-dataset-v1
+    - name: Download SIFT1M dataset (if not cached)
       run: |
-        pytest test_hnsw.py
+        if [ ! -f "sift-128-euclidean.hdf5" ]; then
+          echo "Downloading SIFT1M dataset (500MB, this may take a few minutes)..."
+          # Try multiple download sources
+          wget -q --progress=bar:force:noscroll -O sift-128-euclidean.hdf5 \
+            http://ann-benchmarks.com/sift-128-euclidean.hdf5 || \
+          wget -q --progress=bar:force:noscroll -O sift-128-euclidean.hdf5 \
+            https://storage.googleapis.com/ann-benchmarks/sift-128-euclidean.hdf5 || \
+          curl -L --progress-bar -o sift-128-euclidean.hdf5 \
+            https://storage.googleapis.com/ann-benchmarks/sift-128-euclidean.hdf5
+          echo "Download complete"
+        else
+          echo "Using cached SIFT1M dataset"
+        fi
+        # Verify file exists and has reasonable size (> 100MB)
+        if [ -f "sift-128-euclidean.hdf5" ]; then
+          size=$(stat -f%z "sift-128-euclidean.hdf5" 2>/dev/null || stat -c%s "sift-128-euclidean.hdf5" 2>/dev/null || echo "0")
+          if [ "$size" -lt 100000000 ]; then
+            echo "Warning: Dataset file seems too small ($size bytes), may be corrupted"
+            rm sift-128-euclidean.hdf5
+            exit 1
+          fi
+          echo "Dataset file size: $size bytes"
+        else
+          echo "Error: Failed to download dataset"
+          exit 1
+        fi
+    - name: Run Part 0 script
+      run: |
+        cd part0
+        python starter_code_HNSW.py
+    - name: Test Part 0 output
+      run: |
+        pytest test_hnsw.py -v
