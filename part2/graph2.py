@@ -14,186 +14,258 @@ def load_results():
     with open('part2_results.json', 'r') as f:
         return json.load(f)
 
-def create_qps_vs_recall_plot(results):
-    """Create QPS vs Recall plot with different curves for each dataset"""
-    fig, ax = plt.subplots(figsize=(12, 8))
+def create_comprehensive_qps_plot(results):
+    """Create comprehensive QPS vs Recall plot with table"""
+    fig, (ax, ax_table) = plt.subplots(1, 2, figsize=(18, 8), 
+                                      gridspec_kw={'width_ratios': [2, 1]})
     
     # Color palette for datasets
-    colors = plt.cm.Set1(np.linspace(0, 1, len(results)))
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+    markers = ['o', 's', '^', 'D']
+    
+    table_data = []
+    table_colors = []
     
     for i, dataset_result in enumerate(results):
         dataset = dataset_result['dataset']
         sweep_data = dataset_result['sweep']
         
-        # Group by M value for this dataset
-        by_m = defaultdict(list)
-        for d in sweep_data:
-            by_m[d['M']].append(d)
+        # Sort by recall for smooth curve
+        sweep_data_sorted = sorted(sweep_data, key=lambda x: x['recall'])
+        recalls = [d['recall'] for d in sweep_data_sorted]
+        qps = [d['qps'] for d in sweep_data_sorted]
+        M_values = [d['M'] for d in sweep_data_sorted]
         
-        # Plot each M value as a separate line
-        for M in sorted(by_m.keys()):
-            m_data = by_m[M]
-            recalls = [d['recall'] for d in m_data]
-            qps = [d['qps'] for d in m_data]
-            
-            # Sort by recall for smooth line
-            sorted_data = sorted(zip(recalls, qps))
-            recalls, qps = zip(*sorted_data)
-            
-            ax.plot(recalls, qps, 'o-', color=colors[i], alpha=0.8, 
-                   linewidth=2, markersize=6, label=f'{dataset} (M={M})')
-            
-            # Add M annotations
-            for j, (rec, q) in enumerate(zip(recalls, qps)):
-                if j % 2 == 0:  # Annotate every other point to avoid clutter
-                    ax.annotate(f'M={M}', (rec, q), xytext=(5, 5),
-                               textcoords='offset points', fontsize=8, alpha=0.8)
+        # Plot dataset curve
+        ax.plot(recalls, qps, marker=markers[i], color=colors[i], alpha=0.8, 
+               linewidth=3, markersize=8, label=f'{dataset}', 
+               markerfacecolor='white', markeredgewidth=2, markeredgecolor=colors[i])
+        
+        # Add to table data
+        for j, (rec, q, M) in enumerate(zip(recalls, qps, M_values)):
+            table_data.append([dataset, f'M={M}', f'{rec:.3f}', f'{q:.0f}'])
+            table_colors.append(colors[i])
     
-    # Styling
-    ax.set_xlabel('1-Recall@1', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Queries Per Second (QPS)', fontsize=12, fontweight='bold')
-    ax.set_title('Part 2: HNSW Scalability - QPS vs Recall\nAcross Different Dataset Sizes and M Values', 
-                fontsize=14, fontweight='bold', pad=20)
+    # Styling for main plot
+    ax.set_xlabel('Recall@1', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Queries Per Second (QPS)', fontsize=14, fontweight='bold')
+    ax.set_title('Part 2: HNSW Scalability - QPS vs Recall\nAcross Different Dataset Sizes', 
+                fontsize=16, fontweight='bold', pad=20)
     
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+    ax.legend(loc='upper right', fontsize=12, framealpha=0.9)
     ax.set_yscale('log')
+    ax.set_xlim(0, 1.0)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    
+    # Create table
+    ax_table.axis('tight')
+    ax_table.axis('off')
+    
+    table = ax_table.table(cellText=table_data,
+                          colLabels=['Dataset', 'M Value', 'Recall@1', 'QPS'],
+                          cellLoc='center',
+                          loc='center',
+                          bbox=[0, 0, 1, 1])
+    
+    # Style the table
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 1.5)
+    
+    # Color the cells
+    for i in range(len(table_data) + 1):
+        for j in range(4):
+            cell = table[(i, j)]
+            if i == 0:  # Header
+                cell.set_facecolor('#40466e')
+                cell.set_text_props(weight='bold', color='white')
+            else:  # Data rows
+                cell.set_facecolor(table_colors[i-1])
+                cell.set_text_props(weight='normal', color='black')
+                cell.set_alpha(0.3)
+    
+    ax_table.set_title('Parameter Values', fontsize=14, fontweight='bold', pad=20)
     
     plt.tight_layout()
     return fig
 
-def create_buildtime_vs_recall_plot(results):
-    """Create Index Build Time vs Recall plot"""
-    fig, ax = plt.subplots(figsize=(12, 8))
+def create_comprehensive_buildtime_plot(results):
+    """Create comprehensive Build Time vs Recall plot with table"""
+    fig, (ax, ax_table) = plt.subplots(1, 2, figsize=(18, 8), 
+                                      gridspec_kw={'width_ratios': [2, 1]})
     
     # Color palette for datasets
-    colors = plt.cm.Set1(np.linspace(0, 1, len(results)))
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+    markers = ['o', 's', '^', 'D']
+    
+    table_data = []
+    table_colors = []
     
     for i, dataset_result in enumerate(results):
         dataset = dataset_result['dataset']
         sweep_data = dataset_result['sweep']
         
-        # Group by M value for this dataset
-        by_m = defaultdict(list)
-        for d in sweep_data:
-            by_m[d['M']].append(d)
+        # Sort by recall for smooth curve
+        sweep_data_sorted = sorted(sweep_data, key=lambda x: x['recall'])
+        recalls = [d['recall'] for d in sweep_data_sorted]
+        build_times = [d['build_time'] for d in sweep_data_sorted]
+        M_values = [d['M'] for d in sweep_data_sorted]
         
-        # Plot each M value as a separate line
-        for M in sorted(by_m.keys()):
-            m_data = by_m[M]
-            recalls = [d['recall'] for d in m_data]
-            build_times = [d['build_time'] for d in m_data]
-            
-            # Sort by recall for smooth line
-            sorted_data = sorted(zip(recalls, build_times))
-            recalls, build_times = zip(*sorted_data)
-            
-            ax.plot(recalls, build_times, 's-', color=colors[i], alpha=0.8,
-                   linewidth=2, markersize=6, label=f'{dataset} (M={M})')
-            
-            # Add M annotations
-            for j, (rec, bt) in enumerate(zip(recalls, build_times)):
-                if j % 2 == 0:  # Annotate every other point
-                    ax.annotate(f'M={M}', (rec, bt), xytext=(5, 5),
-                               textcoords='offset points', fontsize=8, alpha=0.8)
+        # Plot dataset curve
+        ax.plot(recalls, build_times, marker=markers[i], color=colors[i], alpha=0.8,
+               linewidth=3, markersize=8, label=f'{dataset}',
+               markerfacecolor='white', markeredgewidth=2, markeredgecolor=colors[i])
+        
+        # Add to table data
+        for j, (rec, bt, M) in enumerate(zip(recalls, build_times, M_values)):
+            table_data.append([dataset, f'M={M}', f'{rec:.3f}', f'{bt:.2f}'])
+            table_colors.append(colors[i])
     
-    # Styling
-    ax.set_xlabel('1-Recall@1', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Index Build Time (seconds)', fontsize=12, fontweight='bold')
-    ax.set_title('Part 2: HNSW Scalability - Build Time vs Recall\nAcross Different Dataset Sizes and M Values', 
-                fontsize=14, fontweight='bold', pad=20)
+    # Styling for main plot
+    ax.set_xlabel('Recall@1', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Index Build Time (seconds)', fontsize=14, fontweight='bold')
+    ax.set_title('Part 2: HNSW Scalability - Build Time vs Recall\nAcross Different Dataset Sizes', 
+                fontsize=16, fontweight='bold', pad=20)
     
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+    ax.legend(loc='upper right', fontsize=12, framealpha=0.9)
     ax.set_yscale('log')
+    ax.set_xlim(0, 1.0)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    
+    # Create table
+    ax_table.axis('tight')
+    ax_table.axis('off')
+    
+    table = ax_table.table(cellText=table_data,
+                          colLabels=['Dataset', 'M Value', 'Recall@1', 'Build Time (s)'],
+                          cellLoc='center',
+                          loc='center',
+                          bbox=[0, 0, 1, 1])
+    
+    # Style the table
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 1.5)
+    
+    # Color the cells
+    for i in range(len(table_data) + 1):
+        for j in range(4):
+            cell = table[(i, j)]
+            if i == 0:  # Header
+                cell.set_facecolor('#40466e')
+                cell.set_text_props(weight='bold', color='white')
+            else:  # Data rows
+                cell.set_facecolor(table_colors[i-1])
+                cell.set_text_props(weight='normal', color='black')
+                cell.set_alpha(0.3)
+    
+    ax_table.set_title('Parameter Values', fontsize=14, fontweight='bold', pad=20)
     
     plt.tight_layout()
     return fig
 
-def create_dataset_size_analysis(results):
-    """Create analysis plots showing dataset size effects"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-    
-    # Group by dataset and M
-    by_dataset = defaultdict(lambda: defaultdict(list))
+def create_individual_dataset_plots(results):
+    """Create individual plots for each dataset with separate table"""
     for dataset_result in results:
         dataset = dataset_result['dataset']
-        for sweep_item in dataset_result['sweep']:
-            M = sweep_item['M']
-            by_dataset[dataset][M].append(sweep_item)
-    
-    # Extract dataset sizes (approximate from names)
-    dataset_sizes = {
-        'MNIST': 60000,
-        'NYTimes': 290000, 
-        'SIFT': 1000000,
-        'GloVe-100': 1183514
-    }
-    
-    # Plot 1: QPS vs Dataset Size (for M=16)
-    M_target = 16
-    if M_target in by_dataset.get('SIFT', {}):
-        sizes = []
-        qps_values = []
-        recalls = []
+        sweep_data = dataset_result['sweep']
         
-        for dataset, m_data in by_dataset.items():
-            if M_target in m_data:
-                # Use median QPS for this M value
-                m_results = m_data[M_target]
-                qps_vals = [r['qps'] for r in m_results]
-                recall_vals = [r['recall'] for r in m_results]
-                
-                sizes.append(dataset_sizes.get(dataset, 0))
-                qps_values.append(np.median(qps_vals))
-                recalls.append(np.median(recall_vals))
+        # Sort by M value
+        sweep_sorted = sorted(sweep_data, key=lambda x: x['M'])
         
-        if sizes:
-            scatter = ax1.scatter(sizes, qps_values, c=recalls, s=100, 
-                                cmap='viridis', alpha=0.8, edgecolors='black')
-            ax1.set_xlabel('Dataset Size', fontsize=12, fontweight='bold')
-            ax1.set_ylabel('QPS (median)', fontsize=12, fontweight='bold')
-            ax1.set_title(f'QPS vs Dataset Size (M={M_target})', fontsize=12, fontweight='bold')
-            ax1.set_xscale('log')
-            ax1.set_yscale('log')
-            ax1.grid(True, alpha=0.3)
-            
-            # Add colorbar
-            cbar = plt.colorbar(scatter, ax=ax1)
-            cbar.set_label('Recall', fontsize=10)
+        # Create figure with 3 subplots: graph1, graph2, table
+        fig, (ax1, ax2, ax_table) = plt.subplots(1, 3, figsize=(20, 6), 
+                                                gridspec_kw={'width_ratios': [1, 1, 0.8]})
+        
+        # Extract data
+        M_values = [d['M'] for d in sweep_sorted]
+        recalls = [d['recall'] for d in sweep_sorted]
+        qps = [d['qps'] for d in sweep_sorted]
+        build_times = [d['build_time'] for d in sweep_sorted]
+        
+        # Plot 1: QPS vs Recall
+        ax1.plot(recalls, qps, 'o-', color='#2E86AB', linewidth=3, markersize=8,
+                markerfacecolor='white', markeredgewidth=2, markeredgecolor='#2E86AB')
+        ax1.set_xlabel('Recall@1', fontsize=12, fontweight='bold')
+        ax1.set_ylabel('QPS', fontsize=12, fontweight='bold')
+        ax1.set_title(f'{dataset} - QPS vs Recall', fontsize=14, fontweight='bold')
+        ax1.grid(True, alpha=0.3)
+        ax1.set_yscale('log')
+        
+        # Plot 2: Build Time vs Recall
+        ax2.plot(recalls, build_times, 's-', color='#A23B72', linewidth=3, markersize=8,
+                markerfacecolor='white', markeredgewidth=2, markeredgecolor='#A23B72')
+        ax2.set_xlabel('Recall@1', fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Build Time (seconds)', fontsize=12, fontweight='bold')
+        ax2.set_title(f'{dataset} - Build Time vs Recall', fontsize=14, fontweight='bold')
+        ax2.grid(True, alpha=0.3)
+        ax2.set_yscale('log')
+        
+        # Create table data
+        table_data = []
+        for d in sweep_sorted:
+            table_data.append([f"M={d['M']}", f"{d['recall']:.3f}", f"{d['qps']:.0f}", f"{d['build_time']:.2f}s"])
+        
+        # Create table
+        ax_table.axis('tight')
+        ax_table.axis('off')
+        
+        table = ax_table.table(cellText=table_data,
+                              colLabels=['M Value', 'Recall@1', 'QPS', 'Build Time'],
+                              cellLoc='center',
+                              loc='center',
+                              bbox=[0, 0, 1, 1])
+        
+        # Style the table
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1, 2)
+        
+        # Color the cells
+        for i in range(len(table_data) + 1):
+            for j in range(4):
+                cell = table[(i, j)]
+                if i == 0:  # Header
+                    cell.set_facecolor('#40466e')
+                    cell.set_text_props(weight='bold', color='white')
+                else:  # Data rows
+                    cell.set_facecolor('#E8F4F8')
+                    cell.set_text_props(weight='normal', color='black')
+        
+        ax_table.set_title(f'{dataset} Results', fontsize=14, fontweight='bold', pad=20)
+        
+        plt.tight_layout()
+        
+        # Save individual plot
+        filename = f'part2_{dataset.lower().replace("-", "_")}_detailed.png'
+        fig.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"Saved: {filename}")
+        
+        plt.close(fig)
+
+def print_results_table(results):
+    """Print a formatted table of results"""
+    print("\n" + "="*80)
+    print("PART 2 RESULTS TABLE")
+    print("="*80)
     
-    # Plot 2: Build Time vs Dataset Size (for M=16)
-    if M_target in by_dataset.get('SIFT', {}):
-        sizes = []
-        build_times = []
-        recalls = []
+    for dataset_result in results:
+        dataset = dataset_result['dataset']
+        sweep_data = dataset_result['sweep']
         
-        for dataset, m_data in by_dataset.items():
-            if M_target in m_data:
-                m_results = m_data[M_target]
-                bt_vals = [r['build_time'] for r in m_results]
-                recall_vals = [r['recall'] for r in m_results]
-                
-                sizes.append(dataset_sizes.get(dataset, 0))
-                build_times.append(np.median(bt_vals))
-                recalls.append(np.median(recall_vals))
+        print(f"\n{dataset} Dataset:")
+        print("-" * 60)
+        print(f"{'M':<4} {'Recall@1':<10} {'QPS':<12} {'Build Time (s)':<15}")
+        print("-" * 60)
         
-        if sizes:
-            scatter = ax2.scatter(sizes, build_times, c=recalls, s=100,
-                                cmap='plasma', alpha=0.8, edgecolors='black')
-            ax2.set_xlabel('Dataset Size', fontsize=12, fontweight='bold')
-            ax2.set_ylabel('Build Time (seconds, median)', fontsize=12, fontweight='bold')
-            ax2.set_title(f'Build Time vs Dataset Size (M={M_target})', fontsize=12, fontweight='bold')
-            ax2.set_xscale('log')
-            ax2.set_yscale('log')
-            ax2.grid(True, alpha=0.3)
-            
-            # Add colorbar
-            cbar = plt.colorbar(scatter, ax=ax2)
-            cbar.set_label('Recall', fontsize=10)
+        # Sort by M value for clean table
+        sweep_sorted = sorted(sweep_data, key=lambda x: x['M'])
+        for d in sweep_sorted:
+            print(f"{d['M']:<4} {d['recall']:<10.3f} {d['qps']:<12.0f} {d['build_time']:<15.2f}")
     
-    plt.tight_layout()
-    return fig
+    print("\n" + "="*80)
 
 def main():
     """Main function"""
@@ -202,21 +274,23 @@ def main():
     
     print(f"Loaded {len(results)} results")
     
-    # Create plots
-    print("Creating QPS vs Recall plot...")
-    fig1 = create_qps_vs_recall_plot(results)
-    fig1.savefig('part2_enhanced_qps_vs_recall.png', dpi=300, bbox_inches='tight', facecolor='white')
-    print("Saved: part2_enhanced_qps_vs_recall.png")
+    # Print results table
+    print_results_table(results)
     
-    print("Creating Build Time vs Recall plot...")
-    fig2 = create_buildtime_vs_recall_plot(results)
-    fig2.savefig('part2_enhanced_buildtime_vs_recall.png', dpi=300, bbox_inches='tight', facecolor='white')
-    print("Saved: part2_enhanced_buildtime_vs_recall.png")
+    # Create comprehensive plots
+    print("\nCreating comprehensive QPS vs Recall plot...")
+    fig1 = create_comprehensive_qps_plot(results)
+    fig1.savefig('part2_comprehensive_qps_vs_recall.png', dpi=300, bbox_inches='tight', facecolor='white')
+    print("Saved: part2_comprehensive_qps_vs_recall.png")
     
-    print("Creating dataset size analysis...")
-    fig3 = create_dataset_size_analysis(results)
-    fig3.savefig('part2_dataset_size_analysis.png', dpi=300, bbox_inches='tight', facecolor='white')
-    print("Saved: part2_dataset_size_analysis.png")
+    print("Creating comprehensive Build Time vs Recall plot...")
+    fig2 = create_comprehensive_buildtime_plot(results)
+    fig2.savefig('part2_comprehensive_buildtime_vs_recall.png', dpi=300, bbox_inches='tight', facecolor='white')
+    print("Saved: part2_comprehensive_buildtime_vs_recall.png")
+    
+    # Create individual dataset plots with tables
+    print("\nCreating individual dataset plots with tables...")
+    create_individual_dataset_plots(results)
     
     # Show plots
     plt.show()

@@ -1,3 +1,132 @@
+import os
+import time
+import json
+from typing import List, Dict, Tuple
+
+import faiss
+import h5py
+import numpy as np
+
+
+SAMPLE_SIZE = 1000
+HNSW_M = 32
+HNSW_EF_CONSTRUCTION = 200
+HNSW_EF_SEARCH_SWEEP = [10, 50, 100, 200]
+LSH_NBITS_SWEEP = [32, 64, 512, 768]
+
+
+def _load_sift(root_dir: str) -> Tuple[np.ndarray, np.ndarray]:
+    h5_path = os.path.join(root_dir, "sift-128-euclidean.hdf5")
+    if not os.path.exists(h5_path):
+        raise FileNotFoundError(
+            f"Missing dataset: {h5_path}. Place 'sift-128-euclidean.hdf5' at the repo root."
+        )
+    with h5py.File(h5_path, "r") as f:
+        train = f["train"][:]
+        test = f["test"][:]
+    return train.astype(np.float32), test.astype(np.float32)
+
+
+def _compute_ground_truth(train: np.ndarray, test: np.ndarray, sample_size: int) -> Tuple[np.ndarray, np.ndarray]:
+    print(f"Computing ground truth on {sample_size} queries with exact L2 search...")
+    test_sample = test[:sample_size].astype(np.float32)
+    dim = train.shape[1]
+    flat = faiss.IndexFlatL2(dim)
+    flat.add(train.astype(np.float32))
+    _, gt = flat.search(test_sample, 1)
+    print("Ground truth computed")
+    return gt, test_sample
+
+
+def _benchmark_hnsw(train: np.ndarray, test_q: np.ndarray, gt: np.ndarray) -> List[Dict]:
+    print("Benchmarking HNSW...")
+    dim = train.shape[1]
+
+    # Build once (graph depends on M and efConstruction only)
+    index = faiss.IndexHNSWFlat(dim, HNSW_M)
+    index.hnsw.efConstruction = HNSW_EF_CONSTRUCTION
+    t0 = time.time()
+    index.add(train)
+    build_time = time.time() - t0
+    print(f"  Build done in {build_time:.2f}s for M={HNSW_M}, efC={HNSW_EF_CONSTRUCTION}")
+
+    results: List[Dict] = []
+    for efs in HNSW_EF_SEARCH_SWEEP:
+        index.hnsw.efSearch = efs
+        t1 = time.time()
+        _, pred = index.search(test_q, 1)
+        q_time = time.time() - t1
+        qps = len(test_q) / q_time if q_time > 0 else float("inf")
+        recall = float(np.mean(pred.reshape(-1) == gt.reshape(-1)))
+        print(f"  efSearch={efs:<4} -> recall={recall:.4f}, qps={qps:.0f}")
+        results.append({
+            "M": HNSW_M,
+            "efConstruction": HNSW_EF_CONSTRUCTION,
+            "efSearch": efs,
+            "recall": recall,
+            "qps": qps,
+            "build_time": build_time,
+        })
+    return results
+
+
+def _benchmark_lsh(train: np.ndarray, test_q: np.ndarray, gt: np.ndarray) -> List[Dict]:
+    print("Benchmarking LSH...")
+    dim = train.shape[1]
+
+    results: List[Dict] = []
+    for nbits in LSH_NBITS_SWEEP:
+        index = faiss.IndexLSH(dim, nbits)
+        t0 = time.time()
+        index.add(train)
+        build_time = time.time() - t0
+
+        t1 = time.time()
+        _, pred = index.search(test_q, 1)
+        q_time = time.time() - t1
+        qps = len(test_q) / q_time if q_time > 0 else float("inf")
+        recall = float(np.mean(pred.reshape(-1) == gt.reshape(-1)))
+        print(f"  nbits={nbits:<4}  -> recall={recall:.4f}, qps={qps:.0f}, build={build_time:.2f}s")
+        results.append({
+            "nbits": nbits,
+            "recall": recall,
+            "qps": qps,
+            "build_time": build_time,
+        })
+    return results
+
+
+def _save_results(hnsw_results: List[Dict], lsh_results: List[Dict], out_path: str) -> None:
+    payload = {
+        "hnsw_results": hnsw_results,
+        "lsh_results": lsh_results,
+    }
+    with open(out_path, "w") as f:
+        json.dump(payload, f, indent=2)
+    print(f"\n✓ Results saved to {out_path}")
+
+
+def main() -> None:
+    print("=== Part 1: HNSW vs LSH Benchmark (results only) ===")
+    root = os.path.dirname(os.path.dirname(__file__))
+
+    train, test = _load_sift(root)
+    print(f"Loaded SIFT: train={len(train):,}, test={len(test):,}, dim={train.shape[1]}")
+
+    gt, test_sample = _compute_ground_truth(train, test, SAMPLE_SIZE)
+
+    hnsw_results = _benchmark_hnsw(train, test_sample, gt)
+    lsh_results = _benchmark_lsh(train, test_sample, gt)
+
+    out_json = os.path.join(os.path.dirname(__file__), "part1_results.json")
+    _save_results(hnsw_results, lsh_results, out_json)
+
+    print("\nRun part1/graph1.py to generate the figure from the saved JSON.")
+
+
+if __name__ == "__main__":
+    main()
+
 import faiss
 import h5py
 import numpy as np

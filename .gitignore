@@ -24,4 +24,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# DiskANN generated files (large index files)
+part3/out/
+*.index
+*.index.data
+*.bin
+
 # Note: Part folders (part0/, part1/, part2/, part3/) are tracked in git
+# But part3/out/ is excluded as it contains large DiskANN index files

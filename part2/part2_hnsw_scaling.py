@@ -6,7 +6,6 @@ from typing import Dict, List, Tuple, Optional
 import faiss
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
 
 # ------------------------------
 # Configuration
@@ -154,45 +153,8 @@ def run_dataset(name: str, path: str, metric: str, sample_size: int) -> Dict:
 
 
 # ------------------------------
-# Plotting
+# Note: Plotting removed by request — this script now ONLY saves results JSON
 # ------------------------------
-
-def plot_qps_vs_recall(all_results: List[Dict], out_path: str) -> None:
-    plt.figure(figsize=(10, 7))
-    for res in all_results:
-        x = [pt["recall"] for pt in res["sweep"]]
-        y = [pt["qps"] for pt in res["sweep"]]
-        labels = [pt["M"] for pt in res["sweep"]]
-        plt.plot(x, y, marker="o", label=f"{res['dataset']} ({res['num_train']:,})")
-        for xi, yi, m in zip(x, y, labels):
-            plt.annotate(f"M={m}", (xi, yi), xytext=(4, 4), textcoords="offset points", fontsize=9)
-    plt.xlabel("1-Recall@1")
-    plt.ylabel("QPS (Queries Per Second)")
-    plt.title("Part 2: HNSW QPS vs Recall across dataset sizes")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=300)
-    print(f"✓ Saved {out_path}")
-
-
-def plot_buildtime_vs_recall(all_results: List[Dict], out_path: str) -> None:
-    plt.figure(figsize=(10, 7))
-    for res in all_results:
-        x = [pt["recall"] for pt in res["sweep"]]
-        y = [pt["build_time"] for pt in res["sweep"]]
-        labels = [pt["M"] for pt in res["sweep"]]
-        plt.plot(x, y, marker="s", label=f"{res['dataset']} ({res['num_train']:,})")
-        for xi, yi, m in zip(x, y, labels):
-            plt.annotate(f"M={m}", (xi, yi), xytext=(4, 4), textcoords="offset points", fontsize=9)
-    plt.xlabel("1-Recall@1")
-    plt.ylabel("Index Build Time (s)")
-    plt.title("Part 2: HNSW Build Time vs Recall across dataset sizes")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=300)
-    print(f"✓ Saved {out_path}")
 
 
 # ------------------------------
@@ -227,13 +189,7 @@ def main() -> None:
         json.dump(all_results, f, indent=2)
     print(f"\n✓ Results saved to {out_json}")
 
-    # Plots
-    out_qps = os.path.join(os.path.dirname(__file__), "part2_qps_vs_recall.png")
-    out_build = os.path.join(os.path.dirname(__file__), "part2_buildtime_vs_recall.png")
-    plot_qps_vs_recall(all_results, out_qps)
-    plot_buildtime_vs_recall(all_results, out_build)
-
-    print("\n🎉 Part 2 run complete. Include the PNGs in your report and note tuned params per dataset in part2/README.md.")
+    print("\n🎉 Part 2 run complete. Use part2/graph2.py to generate all plots from part2_results.json.")
 
 
 if __name__ == "__main__":
